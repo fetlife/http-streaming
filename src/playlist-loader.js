@@ -357,10 +357,12 @@ export default class PlaylistLoader extends EventTarget {
     * @param {Object=} playlist the parsed media playlist
     * object to switch to
     * @param {Boolean=} is this the last available playlist
+    * @param {Function=} is a callback called when the playlist
+    * is set
     *
     * @return {Playlist} the current loaded media
     */
-  media(playlist, isFinalRendition) {
+  media(playlist, isFinalRendition, onPlaylistLoaded) {
     // getter
     if (!playlist) {
       return this.media_;
@@ -409,11 +411,13 @@ export default class PlaylistLoader extends EventTarget {
         this.trigger('mediachanging');
         this.trigger('mediachange');
       }
+      if (onPlaylistLoaded) onPlaylistLoaded();
       return;
     }
 
     // switching to the active playlist is a no-op
     if (!mediaChange) {
+      if (onPlaylistLoaded) onPlaylistLoaded();
       return;
     }
 
@@ -424,6 +428,7 @@ export default class PlaylistLoader extends EventTarget {
       if (playlist.resolvedUri === this.request.url) {
         // requesting to switch to the same playlist multiple times
         // has no effect after the first
+        if (onPlaylistLoaded) onPlaylistLoaded();
         return;
       }
       this.request.onreadystatechange = null;
@@ -458,6 +463,8 @@ export default class PlaylistLoader extends EventTarget {
         this.trigger('loadedmetadata');
       } else {
         this.trigger('mediachange');
+
+        if (onPlaylistLoaded) onPlaylistLoaded();
       }
     });
   }

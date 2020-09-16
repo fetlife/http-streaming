@@ -580,7 +580,10 @@ export class MasterPlaylistController extends videojs.EventTarget {
     // in IE and Edge, but seeking in place is sufficient on all other browsers)
     // Edge/IE bug: https://developer.microsoft.com/en-us/microsoft-edge/platform/issues/14600375/
     // Chrome bug: https://bugs.chromium.org/p/chromium/issues/detail?id=651904
-    const reset = () => {
+
+    // We need to execute onPlaylistLoaded() after the new playlist is loaded, as we want to avoid racing
+    // conditions with `this.tech_.setCurrentTime()`, which plays segments from the current playlist
+    const onPlaylistLoaded = () => {
       this.mainSegmentLoader_.resetEverything(() => {
         // Since this is not a typical seek, we avoid the seekTo method which can cause segments
         // from the previously enabled rendition to load before the new playlist has finished loading
@@ -593,18 +596,10 @@ export class MasterPlaylistController extends videojs.EventTarget {
     };
     // don't need to reset audio as it is reset when media changes
 
-    if (media === this.masterPlaylistLoader_.media()) {
-      // even if the media is the same, we need to force a reset, because the player might be in the
-      // middle of a smooth quality change. For example, a bandwidthupdate event can change the
-      // rendition, but the change takes effect smoothly, a few segments down the line
-      reset();
-      return;
-    }
-
-    // We need to execute reset() after the new playlist is loaded, as we want to avoid racing
-    // conditions with `this.tech_.setCurrentTime()`, which plays segments from the current playlist
-    this.tech_.one('mediachange', reset);
-    this.masterPlaylistLoader_.media(media);
+    // even if the media is currently the same, we need to set it again, because the playlist loader
+    // might be in the middle of a playlist change. The media() call will take care of cancelling
+    // previous playlist requests
+    this.masterPlaylistLoader_.media(media, null, onPlaylistLoaded);
   }
 
   /**
